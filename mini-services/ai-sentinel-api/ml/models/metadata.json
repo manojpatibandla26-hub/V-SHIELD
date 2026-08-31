@@ -1,0 +1,288 @@
+{
+  "model_version": "v1.0",
+  "algorithm": "RandomForestClassifier",
+  "algorithm_params": {
+    "n_estimators": 220,
+    "max_depth": 16,
+    "class_weight": "balanced",
+    "random_state": 42
+  },
+  "anomaly_detector": {
+    "algorithm": "IsolationForest",
+    "contamination": 0.12,
+    "trained_on": "benign windows only"
+  },
+  "trained_at": "2026-08-31T05:57:07.083730+00:00",
+  "classes": [
+    "BENIGN",
+    "DOS_DDOS",
+    "PORT_SCAN",
+    "SYN_FLOOD",
+    "BRUTE_FORCE",
+    "ANOMALY"
+  ],
+  "features": [
+    "duration_s",
+    "flow_count",
+    "total_packets",
+    "total_bytes",
+    "avg_pkt_size",
+    "pkt_rate",
+    "byte_rate",
+    "syn_count",
+    "ack_count",
+    "fin_count",
+    "rst_count",
+    "syn_pct",
+    "rst_pct",
+    "syn_ack_ratio",
+    "distinct_dst_ports",
+    "distinct_dst_ips",
+    "distinct_src_ips",
+    "avg_flow_duration_s",
+    "avg_flow_packets",
+    "auth_port_pct",
+    "tcp_pct",
+    "icmp_pct"
+  ],
+  "n_features": 22,
+  "train_samples": 3600,
+  "eval_samples": 3600,
+  "dataset": {
+    "source": "synthetic (documented per-class distributions, CIC-IDS2017-inspired; see ml/generate_dataset.py)",
+    "generator_seed_train": 42,
+    "generator_seed_eval": 1337,
+    "honesty_note": "Metrics below are measured on held-out samples of the synthetic distribution. High scores reflect separable synthetic classes, NOT real-world generalization. Train on real data with ml/train_real.py for production."
+  },
+  "metrics": {
+    "accuracy": 1.0,
+    "precision_macro": 1.0,
+    "recall_macro": 1.0,
+    "f1_macro": 1.0,
+    "mean_confidence": 0.997473484848485,
+    "min_confidence": 0.6590909090909091,
+    "per_class": {
+      "BENIGN": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 600
+      },
+      "DOS_DDOS": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 600
+      },
+      "PORT_SCAN": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 600
+      },
+      "SYN_FLOOD": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 600
+      },
+      "BRUTE_FORCE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 600
+      },
+      "ANOMALY": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 600
+      }
+    },
+    "confusion_matrix": {
+      "labels": [
+        "BENIGN",
+        "DOS_DDOS",
+        "PORT_SCAN",
+        "SYN_FLOOD",
+        "BRUTE_FORCE",
+        "ANOMALY"
+      ],
+      "matrix": [
+        [
+          600,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          600,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          600,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          600,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          600,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          600
+        ]
+      ]
+    },
+    "eval_samples": 3600
+  },
+  "feature_importances": [
+    {
+      "feature": "syn_pct",
+      "importance": 0.10463482281109582
+    },
+    {
+      "feature": "rst_pct",
+      "importance": 0.09057018528160769
+    },
+    {
+      "feature": "syn_ack_ratio",
+      "importance": 0.09049183274584939
+    },
+    {
+      "feature": "syn_count",
+      "importance": 0.08899217480954377
+    },
+    {
+      "feature": "flow_count",
+      "importance": 0.08454610346033593
+    },
+    {
+      "feature": "fin_count",
+      "importance": 0.06699381805259616
+    },
+    {
+      "feature": "tcp_pct",
+      "importance": 0.06694364220267947
+    },
+    {
+      "feature": "avg_flow_duration_s",
+      "importance": 0.059651711906319536
+    },
+    {
+      "feature": "auth_port_pct",
+      "importance": 0.047221136986039663
+    },
+    {
+      "feature": "rst_count",
+      "importance": 0.03830554620944665
+    },
+    {
+      "feature": "pkt_rate",
+      "importance": 0.035030132852551986
+    },
+    {
+      "feature": "avg_flow_packets",
+      "importance": 0.03379951946895281
+    },
+    {
+      "feature": "ack_count",
+      "importance": 0.033287693599031346
+    },
+    {
+      "feature": "distinct_dst_ports",
+      "importance": 0.032961352216313626
+    },
+    {
+      "feature": "avg_pkt_size",
+      "importance": 0.028968004423326088
+    },
+    {
+      "feature": "icmp_pct",
+      "importance": 0.027997342054030153
+    },
+    {
+      "feature": "total_packets",
+      "importance": 0.02338357507427416
+    },
+    {
+      "feature": "total_bytes",
+      "importance": 0.021391507675057504
+    },
+    {
+      "feature": "byte_rate",
+      "importance": 0.01579929525546556
+    },
+    {
+      "feature": "duration_s",
+      "importance": 0.006943927868212505
+    },
+    {
+      "feature": "distinct_dst_ips",
+      "importance": 0.0015927939421176787
+    },
+    {
+      "feature": "distinct_src_ips",
+      "importance": 0.0004938811051524827
+    }
+  ],
+  "label_mapping": [
+    {
+      "dataset_label": "BENIGN",
+      "app_class": "BENIGN"
+    },
+    {
+      "dataset_label": "DDoS (LOIC/HOIC)",
+      "app_class": "DOS_DDOS"
+    },
+    {
+      "dataset_label": "DoS Hulk / GoldenEye",
+      "app_class": "DOS_DDOS"
+    },
+    {
+      "dataset_label": "DoS Slowloris / Slowhttptest",
+      "app_class": "DOS_DDOS"
+    },
+    {
+      "dataset_label": "PortScan",
+      "app_class": "PORT_SCAN"
+    },
+    {
+      "dataset_label": "FTP-Patator / SSH-Patator",
+      "app_class": "BRUTE_FORCE"
+    },
+    {
+      "dataset_label": "Bot / Infiltration / Heartbleed / Web Attack",
+      "app_class": "ANOMALY"
+    },
+    {
+      "dataset_label": "(no direct label \u2014 modelled from half-open connection behaviour literature)",
+      "app_class": "SYN_FLOOD"
+    }
+  ]
+}

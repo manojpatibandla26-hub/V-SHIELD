@@ -1,0 +1,14 @@
+{
+  "name": "ai-sentinel-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI Sentinel NIDS backend: FastAPI + scikit-learn RandomForest + IsolationForest + WebSockets",
+  "scripts": {
+    "dev": "node index.js",
+    "start": "node index.js",
+    "train": "bash -c 'if [ -x .venv/bin/python ]; then PY=.venv/bin/python; else PY=python3; fi; $PY ml/train.py'",
+    "generate:dataset": "bash -c 'if [ -x .venv/bin/python ]; then PY=.venv/bin/python; else PY=python3; fi; $PY ml/generate_dataset.py'",
+    "evaluate": "bash -c 'if [ -x .venv/bin/python ]; then PY=.venv/bin/python; else PY=python3; fi; $PY ml/evaluate.py'",
+    "generate:pcaps": "bash -c 'if [ -x .venv/bin/python ]; then PY=.venv/bin/python; else PY=python3; fi; $PY tools/generate_samples.py'"
+  }
+}
