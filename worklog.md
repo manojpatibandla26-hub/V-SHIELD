@@ -207,3 +207,50 @@ Work Log:
 
 Stage Summary:
 - Verdict: all 21 core claims VERIFIED genuine. Issues found: 1 critical-env (duplicate instance), 1 transient 500, minor items (missing .env.example, on_event deprecation, no .pyc-aware reload quirks, state.py current_risk=5 display default). Details delivered to user in review report.
+
+---
+Task ID: 12
+Agent: main (Z.ai Code)
+Task: Final pre-hackathon changes (user-approved architecture; NO rebuild):
+duplicate-process fix + stable startup, no-reload presentation mode, Reset
+Demo action, .env.example files, anomaly wording fix, scaffold removal.
+
+Work Log:
+- Killed BOTH duplicate backend process trees (bun→node→uvicorn ×2 on :8000);
+  root cause: harness dev.sh at boot + per-command cleanup kills tool-spawned
+  children → previous session accidentally left two wrappers.
+- Discovered persistence mechanism: processes must double-fork (PPID→1) to
+  survive between tool commands; setsid/nohup alone is NOT enough.
+- index.js: added port-in-use guard (refuses 2nd instance, exit 1, no zombie)
+  + --no-reload flag / AI_SENTINEL_RELOAD=0 env for presentation mode.
+- package.json: added "demo" script (node index.js --no-reload).
+- scripts/run_backend.sh|.bat: accept --no-reload / no-reload arg; documented.
+- Backend reset: store.clear_events(), alerting.reset_all(), state.reset_runtime(),
+  sim_service.cancel_all(); new POST /api/reset route broadcasting WS
+  {"type":"demo_reset"} + returning cleared counts + fresh statistics.
+- Frontend: DemoResetMsg type, sentinelApi.resetDemo(), store resetDemo()
+  action + demo_reset WS handler (clears events/alerts/sims/traffic/chart);
+  header got a clearly visible amber "Reset Demo" button with AlertDialog
+  confirm (controlled dialog, spinner while resetting).
+- Created root .env.example (gateway vs laptop NEXT_PUBLIC_API_BASE modes)
+  and backend .env.example (AI_SENTINEL_HOST/PORT/LOG_LEVEL, all optional).
+- Anomaly wording fixed (RF assigns ANOMALY class — one of its 6 trained
+  classes; IsolationForest feeds risk score + documented ≥0.90 override):
+  generators.py scenario copy/expected, model-view.tsx, README §13.
+- Removed unused scaffold: root tests/ (3 sandbox .sh), download/README.md,
+  src/app/api/route.ts (hello-world route), src/lib/db.ts (unused Prisma).
+- README: §7 startup modes, §18 demo step 0 (reset), /api/reset in API table,
+  demo_reset in WS examples.
+- pytest: 13 passed. bun run lint: clean. agent-browser E2E via :81 gateway:
+  reset button visible + confirmed → PROTECTED/0 events; SYN Flood sim
+  (CRITICAL risk 95) → Simulate Block → MITIGATED; post-reset anomaly sim OK;
+  anomaly wording rendered; VLM screenshot QA desktop+mobile OK; no console
+  errors; footer pushes naturally on long pages.
+- Verified demo (no-reload) mode starts uvicorn WITHOUT --reload flags and
+  serves sims/reset; duplicate-start guard refuses 2nd instance (exit 1).
+- Final state: ONE backend (demo mode), frontend :3000, gateway :81, clean
+  PROTECTED baseline, 0 events.
+
+Stage Summary:
+- All 10 requested changes delivered without touching ML/PCAP/WS/simulation
+  architecture, model architecture, or dependencies. Project demo-ready.

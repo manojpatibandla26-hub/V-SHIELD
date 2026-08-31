@@ -14,7 +14,7 @@ from app.core import model_registry, pipeline, risk_engine
 from app.core.feature_schema import FEATURES, missing_features
 from app.pcap import parser as pcap_parser
 from app.pcap import samples as pcap_samples
-from app.services import events, state, store
+from app.services import alerting, events, state, store
 from app.simulation import generators, service as sim_service
 
 log = logging.getLogger("sentinel.api")
@@ -230,6 +230,39 @@ async def simulate_mitigation(event_id: str):
     return {"ok": True, "event": ev, "handled_by": "immediate",
             "before_pkt_rate": round(before, 1),
             "after_pkt_rate": round(after, 1)}
+
+
+# ------------------------------------------------------------------ reset
+@router.post("/reset")
+async def reset_demo():
+    """Reset ALL demo state safely (between demo runs / before judging):
+
+    * cancels any running simulation
+    * deletes every stored threat event (audit DB)
+    * clears alert escalation memory, blocked sources, last traffic window
+
+    The ML models, trained artifacts, PCAP files and the background benign
+    traffic engine are untouched. Connected dashboards receive a
+    `demo_reset` WebSocket event and return to the clean PROTECTED baseline.
+    """
+    cancelled_sims = sim_service.cancel_all()
+    events_cleared = store.clear_events()
+    alerting.reset_all()
+    state.reset_runtime()
+    stats = state.statistics()
+    await events.broadcast({
+        "type": "demo_reset", "ts": time.time(),
+        "message": ("Demo state reset — events cleared, blocked sources "
+                    "released. Baseline traffic continues."),
+    })
+    return {
+        "ok": True,
+        "cleared": {
+            "events": events_cleared,
+            "cancelled_simulations": cancelled_sims,
+        },
+        "statistics": stats,
+    }
 
 
 # ------------------------------------------------------------------ statistics

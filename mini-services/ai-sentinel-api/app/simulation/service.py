@@ -221,3 +221,14 @@ def active_for_source(source: str) -> Optional[Dict]:
         if sim.get("source") == source:
             return sim
     return None
+
+
+def cancel_all() -> int:
+    """Cancel every running simulation (demo reset). Returns count."""
+    n = 0
+    for sim in list(ACTIVE_SIMS.values()):
+        task = sim.get("task")
+        if task is not None and not task.done():
+            task.cancel()
+            n += 1
+    return n

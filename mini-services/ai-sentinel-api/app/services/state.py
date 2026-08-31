@@ -47,6 +47,14 @@ def set_last_window(window: Dict) -> None:
     _last_window.update(window)
 
 
+def reset_runtime() -> None:
+    """Clear in-memory runtime state (demo reset): blocked sources and the
+    last traffic window. Process uptime and the benign traffic engine keep
+    running — the dashboard returns to its clean PROTECTED baseline."""
+    _blocked.clear()
+    _last_window.clear()
+
+
 def statistics() -> Dict:
     """Aggregated dashboard statistics (network status + totals)."""
     db_stats = store.statistics()

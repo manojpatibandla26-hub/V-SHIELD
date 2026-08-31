@@ -59,6 +59,7 @@ interface SentinelStore {
   runSimulation: (attackType: string) => Promise<void>;
   resolveEvent: (id: string) => Promise<void>;
   mitigateEvent: (id: string) => Promise<void>;
+  resetDemo: () => Promise<void>;
   refreshEvents: () => Promise<void>;
   refreshStatistics: () => Promise<void>;
 }
@@ -69,6 +70,17 @@ function upsertEvent(events: ThreatEvent[], ev: ThreatEvent): ThreatEvent[] {
   const next = [...events];
   next[idx] = { ...next[idx], ...ev };
   return next;
+}
+
+function clearedDemoState() {
+  return {
+    traffic: [] as TrafficPoint[],
+    livePrediction: null,
+    events: [] as ThreatEvent[],
+    selectedEventId: null,
+    alerts: [] as AlertToastItem[],
+    sims: {} as Record<string, SimState>,
+  };
 }
 
 export const useSentinelStore = create<SentinelStore>((set, get) => ({
@@ -285,6 +297,13 @@ export const useSentinelStore = create<SentinelStore>((set, get) => ({
         });
         break;
       }
+      case "demo_reset": {
+        // Backend cleared everything (POST /api/reset): mirror it locally.
+        set(clearedDemoState());
+        get().refreshStatistics();
+        get().refreshEvents();
+        break;
+      }
       default:
         break;
     }
@@ -342,6 +361,19 @@ export const useSentinelStore = create<SentinelStore>((set, get) => ({
       get().refreshStatistics();
     } catch {
       get().refreshEvents();
+    }
+  },
+
+  resetDemo: async () => {
+    try {
+      await sentinelApi.resetDemo();
+      set(clearedDemoState());
+      await Promise.allSettled([
+        get().refreshStatistics(),
+        get().refreshEvents(),
+      ]);
+    } catch {
+      /* backend unreachable — WS reconnect/polling will resync */
     }
   },
 }));

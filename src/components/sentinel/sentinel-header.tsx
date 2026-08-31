@@ -1,14 +1,26 @@
 "use client";
 /**
- * AI Sentinel — header: identity, live system status, model badge, clock.
+ * AI Sentinel — header: identity, live system status, model badge, clock,
+ * and the global Reset Demo action.
  * All status comes from the backend (health + WS), never hard-coded.
  */
 import { useEffect, useState } from "react";
-import { ShieldCheck, Radio, Cpu, FlaskConical } from "lucide-react";
+import { ShieldCheck, Radio, Cpu, FlaskConical, RotateCcw } from "lucide-react";
 import { useSentinelStore } from "@/lib/sentinel/store";
 import { ViewTabs } from "./sentinel-app";
 import { cn } from "@/lib/utils";
 import type { ViewName, WsStatus } from "@/lib/sentinel/types";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const WS_LABEL: Record<WsStatus, string> = {
   connected: "Live",
@@ -38,7 +50,10 @@ export function SentinelHeader({
   const wsStatus = useSentinelStore((s) => s.wsStatus);
   const backendOnline = useSentinelStore((s) => s.backendOnline);
   const modelInfo = useSentinelStore((s) => s.modelInfo);
+  const resetDemo = useSentinelStore((s) => s.resetDemo);
   const [clock, setClock] = useState<string>("");
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     const tick = () =>
@@ -49,6 +64,15 @@ export function SentinelHeader({
   }, []);
 
   const modelOk = modelInfo !== null;
+
+  const doReset = async () => {
+    setResetting(true);
+    try {
+      await resetDemo();
+    } finally {
+      setResetting(false);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur">
@@ -124,6 +148,51 @@ export function SentinelHeader({
             <span className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 font-mono tabular-nums text-zinc-400">
               {clock}
             </span>
+
+            {/* Reset Demo — global, clearly visible on every view */}
+            <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
+              <AlertDialogTrigger asChild>
+                <button
+                  type="button"
+                  disabled={resetting}
+                  aria-label="Reset demo state"
+                  title="Reset demo state: clears events, alerts and blocked sources"
+                  className={cn(
+                    "inline-flex min-h-[32px] items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-colors",
+                    "border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20",
+                    "disabled:cursor-not-allowed disabled:opacity-60",
+                  )}
+                >
+                  <RotateCcw
+                    className={cn("h-3.5 w-3.5", resetting && "animate-spin")}
+                    aria-hidden
+                  />
+                  {resetting ? "Resetting…" : "Reset Demo"}
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="border-zinc-800 bg-zinc-950 text-zinc-100">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reset demo state?</AlertDialogTitle>
+                  <AlertDialogDescription className="text-zinc-400">
+                    This clears all threat events, alerts, blocked sources and
+                    running simulations, and returns the dashboard to the clean
+                    PROTECTED baseline. The ML models, PCAP files and baseline
+                    traffic engine are untouched.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100">
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => void doReset()}
+                    className="bg-amber-600 text-white hover:bg-amber-500"
+                  >
+                    Reset now
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
 

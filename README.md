@@ -128,18 +128,22 @@ Or use the helpers: `scripts/setup_backend.sh|bat`, `scripts/run_backend.sh|bat`
 
 ## 7. Running
 
-**Backend** (port 8000):
+**Backend** (port 8000) — ONE instance only (the wrapper refuses to start a
+second one if the port is taken):
 ```bash
+bash scripts/run_backend.sh                  # dev mode (auto-reload on .py changes)
+bash scripts/run_backend.sh --no-reload      # PRESENTATION mode (stable, no reload)
+# Windows: scripts\run_backend.bat  /  scripts\run_backend.bat no-reload
+# or directly:
 cd mini-services/ai-sentinel-api
 .venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-# or: bash scripts/run_backend.sh        (Windows: scripts\run_backend.bat)
 ```
 First boot auto-trains the model if artifacts are missing (~10 s).
 
 **Frontend** (port 3000):
 ```bash
 npm run dev                                       # or: bun run dev
-# or: bash scripts/run_frontend.sh
+# or: bash scripts/run_frontend.sh               (Windows: scripts\run_frontend.bat)
 ```
 
 **Connecting the two — choose ONE:**
@@ -214,6 +218,7 @@ Base: `http://localhost:8000` (sandbox: same origin + `?XTransformPort=8000`).
 | GET | `/api/statistics` | dashboard aggregates + network status |
 | POST | `/api/events/{id}/resolve` | mark RESOLVED |
 | POST | `/api/events/{id}/simulate-mitigation` | simulated block + recovery |
+| POST | `/api/reset` | reset demo state (events, alerts, blocks, sims) → WS `demo_reset` |
 
 **WebSocket:** connect to `/` or `/ws` (sandbox: `ws://host/ws?XTransformPort=8000`).
 Server pushes JSON messages:
@@ -234,6 +239,7 @@ Server pushes JSON messages:
  "before_pkt_rate": 734, "after_pkt_rate": 120, "status": "MITIGATED",
  "note": "Simulated block only — no real firewall or host was modified."}
 {"type": "sim_started|sim_progress|sim_complete", "sim_id": "…", ...}
+{"type": "demo_reset", "ts": 0, "message": "Demo state reset — events cleared, …"}
 ```
 
 Example REST call:
@@ -257,10 +263,16 @@ The full breakdown is visible per event in the UI.
 
 IsolationForest trained on **benign windows only**. Raw scores are calibrated
 against benign percentiles (p50/p95/p99 measured on a held-out benign set):
-≤p50 → 0–0.2, p95 → 0.8, ≥p99 → 1.0. If the RandomForest votes BENIGN but the
-anomaly score ≥ 0.90, the window is surfaced as **ANOMALY (unknown behaviour)**
-with a note explaining the override — this is how the system distinguishes
-*known attacks* from *unusual traffic it cannot name*.
+≤p50 → 0–0.2, p95 → 0.8, ≥p99 → 1.0. The score feeds the risk engine as the
+anomaly term.
+
+**Who assigns the ANOMALY class?** The RandomForest — `ANOMALY` is one of its
+six trained classes, and that is the usual path (e.g. the "Network Anomaly"
+scenario). Separately, a documented override in `app/core/pipeline.py` surfaces
+a window as **ANOMALY (unknown behaviour)** when the RandomForest votes BENIGN
+but the anomaly score is ≥ 0.90, with a note explaining the override. This is
+how the system distinguishes *known attacks* from *unusual traffic it cannot
+name*.
 
 ## 14. Testing
 
@@ -302,6 +314,11 @@ feedback loop into risk calibration, ticketing integration, LLM summarization.
 
 ## 18. Hackathon demo (2 minutes)
 
+0. (before the demo / between runs) Click **Reset Demo** in the header →
+   confirms → clears events, alerts and blocked sources, dashboard returns
+   to the clean **Protected** baseline. Also available via
+   `POST /api/reset` (curl) or the `bun run demo` backend mode for a
+   reload-free presentation server.
 1. Open the dashboard → green **Protected** banner, traffic flowing.
 2. Open **Security Test Lab** → read the safety banner.
 3. Click **Run Safe Test** on *SYN Flood*.

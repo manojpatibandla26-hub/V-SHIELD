@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node index.js",
     "start": "node index.js",
+    "demo": "node index.js --no-reload",
     "train": "bash -c 'if [ -x .venv/bin/python ]; then PY=.venv/bin/python; else PY=python3; fi; $PY ml/train.py'",
     "generate:dataset": "bash -c 'if [ -x .venv/bin/python ]; then PY=.venv/bin/python; else PY=python3; fi; $PY ml/generate_dataset.py'",
     "evaluate": "bash -c 'if [ -x .venv/bin/python ]; then PY=.venv/bin/python; else PY=python3; fi; $PY ml/evaluate.py'",

@@ -79,11 +79,15 @@ SCENARIOS: Dict[str, Dict] = {
         "tagline": "Simulates unusual-but-not-attack behaviour (unknown pattern).",
         "description": (
             "Traffic that is not a known attack: e.g. a sudden ICMP flood, a "
-            "FIN sweep, or giant jumbo packets. The RandomForest alone may not "
-            "recognise it — the IsolationForest anomaly detector flags it as "
-            "unknown unusual behaviour."
+            "FIN sweep, or giant jumbo packets. The RandomForest classifier "
+            "is trained to recognise this shape as its own ANOMALY class; "
+            "the IsolationForest contributes an independent anomaly score "
+            "that raises the risk. (If the classifier ever voted BENIGN "
+            "while that score was extreme, a documented override would "
+            "still surface the window as an anomaly.)"
         ),
-        "expected": "ANOMALY classification driven by the anomaly detector",
+        "expected": ("ANOMALY classification from the RandomForest, with the "
+                     "IsolationForest anomaly score feeding the risk score"),
         "source": "10.0.9.7",
         "target": "10.0.0.2",
     },

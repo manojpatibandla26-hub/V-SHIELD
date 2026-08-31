@@ -344,9 +344,11 @@ export function ModelView() {
           {modelInfo.anomaly_detector.trained_on} · contamination ={" "}
           {modelInfo.anomaly_detector.contamination}. Raw scores are calibrated
           against benign percentiles so 0.2 is &quot;unusual&quot; and 1.0 is
-          &quot;extreme outlier&quot;. If the RandomForest votes BENIGN but this
-          detector is extremely alarmed, the window is surfaced as an ANOMALY
-          (unknown behaviour) instead of being ignored.
+          &quot;extreme outlier&quot;. The ANOMALY class label itself is
+          assigned by the RandomForest (it is one of its six trained
+          classes); this detector&apos;s score feeds the risk engine — and,
+          as a documented override, a window the classifier calls BENIGN is
+          still surfaced as ANOMALY when this score reaches ≥ 0.90.
         </p>
       </div>
     </div>

@@ -161,6 +161,12 @@ export interface SimCompleteMsg {
   message: string;
 }
 
+export interface DemoResetMsg {
+  type: "demo_reset";
+  ts: number;
+  message: string;
+}
+
 export type WsMessage =
   | TrafficUpdateMsg
   | ThreatDetectedMsg
@@ -169,6 +175,7 @@ export type WsMessage =
   | SimStartedMsg
   | SimProgressMsg
   | SimCompleteMsg
+  | DemoResetMsg
   | { type: "event_resolved"; ts: number; event_id: string; status: string }
   | { type: "hello" | "pong" | "system_status"; [k: string]: unknown };
 

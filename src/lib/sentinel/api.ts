@@ -112,4 +112,9 @@ export const sentinelApi = {
     }>(`/api/events/${eventId}/simulate-mitigation`),
   analyzeSample: (name: string) =>
     apiPost<PcapResult>(`/api/pcap/samples/${name}/analyze`),
+  resetDemo: () =>
+    apiPost<{
+      ok: boolean;
+      cleared: { events: number; cancelled_simulations: number };
+    }>("/api/reset"),
 };

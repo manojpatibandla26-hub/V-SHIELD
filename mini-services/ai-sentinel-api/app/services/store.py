@@ -112,6 +112,17 @@ def update_status(event_id: str, status: str) -> Optional[Dict]:
     return get_event(event_id)
 
 
+def clear_events() -> int:
+    """Delete all events (demo reset). Returns number of rows removed."""
+    with _lock:
+        c = _get()
+        cur = c.execute("SELECT COUNT(*) FROM events")
+        n = int(cur.fetchone()[0])
+        c.execute("DELETE FROM events")
+        c.commit()
+    return n
+
+
 def get_event(event_id: str) -> Optional[Dict]:
     row = _get().execute("SELECT * FROM events WHERE id=?",
                          (event_id,)).fetchone()

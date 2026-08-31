@@ -99,3 +99,8 @@ async def publish_threat(result: Dict, origin: str = "simulation",
 
 def reset_event(event_id: str) -> None:
     _last_severity.pop(event_id, None)
+
+
+def reset_all() -> None:
+    """Clear all escalation memory (demo reset)."""
+    _last_severity.clear()
