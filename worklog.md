@@ -192,3 +192,18 @@ Work Log:
 
 Stage Summary:
 - Project complete and browser-verified end-to-end; ready for the hackathon demo.
+
+---
+Task ID: 11
+Agent: main (Z.ai Code, strict-review mode)
+Task: Senior code review — verify all 21 claims via code tracing + live runtime/browser tests.
+
+Work Log:
+- Traced full code paths: feature_schema -> pipeline -> model_registry -> risk_engine -> anomaly -> explanation -> alerting -> WS; routes.py; pcap parser; simulation generators/service; train.py; store/state/traffic/events.
+- Live tests: WS + syn_flood simulation (full escalation 48→95 CRITICAL observed); /api/analyze benign vs flood (BENIGN 0.96 / SYN_FLOOD 0.70 with evidence); PCAP upload direct + via gateway (mixed → 3 attacks); pytest 13 passed; eslint clean; browser via :81 gateway: Test Lab → sim → auto-open detail → Simulate Block → MITIGATED.
+- Found duplicate mini-service instance: two `bun run dev` spawned; second uvicorn failed to bind (zombie). No split-brain (single :8000 listener), but process hygiene bug + a single transient 500 on first PCAP attempt (unreproducible 3/3 later, likely tied to reload/duplicate environment).
+- Found: no root .env.example (worklog overclaim; README documents .env.local instead).
+- Cleaned review-polluted events DB → PROTECTED baseline restored (0 events).
+
+Stage Summary:
+- Verdict: all 21 core claims VERIFIED genuine. Issues found: 1 critical-env (duplicate instance), 1 transient 500, minor items (missing .env.example, on_event deprecation, no .pyc-aware reload quirks, state.py current_risk=5 display default). Details delivered to user in review report.
