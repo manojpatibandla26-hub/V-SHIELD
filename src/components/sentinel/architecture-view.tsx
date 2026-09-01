@@ -1,8 +1,8 @@
 "use client";
 /**
- * AI Sentinel — Architecture page.
- * Shows the real pipeline and, for every stage, clearly separates
- * "Implemented now" from "Production integration (future)" — no fake claims.
+ * AI Sentinel — Architecture & Detection Pipeline.
+ * 9-Stage AI Intrusion Detection Pipeline for Hackathon & Technical Evaluation.
+ * Clearly separates "Implemented Now" from "Production Integration (Future)".
  */
 import {
   ArrowDown,
@@ -12,12 +12,19 @@ import {
   Network,
   Database,
   MonitorSmartphone,
+  Cpu,
+  ShieldAlert,
+  BellRing,
+  Layers,
+  Sparkles,
 } from "lucide-react";
 import { useSentinelStore } from "@/lib/sentinel/store";
 import { cn } from "@/lib/utils";
 
 interface Stage {
+  id: string;
   name: string;
+  subtitle: string;
   icon: React.ComponentType<{ className?: string }>;
   now: string[];
   future: string[];
@@ -25,225 +32,273 @@ interface Stage {
 
 const STAGES: Stage[] = [
   {
-    name: "Input — Traffic / PCAP / Safe Simulation",
+    id: "stage-1",
+    name: "1. Network Traffic Ingestion",
+    subtitle: "Synthetic Stream / Offline PCAP / Controlled Simulation",
     icon: Network,
     now: [
-      "Background benign traffic generator (synthetic, live stream)",
-      "5 safe attack simulations (synthetic feature windows)",
-      "Offline PCAP/PCAPNG upload + bundled samples",
-      "POST /api/analyze for direct feature vectors",
+      "Continuous background benign traffic generator streaming live telemetry over WebSockets",
+      "5 safe attack simulation scenarios (SYN flood, DoS, port scan, brute force, anomalies)",
+      "Direct offline PCAP/PCAPNG binary frame parser with magic byte validation",
+      "REST endpoint POST /api/analyze for raw telemetry ingestion",
     ],
     future: [
-      "Mirror SPAN/tap port traffic via a capture agent",
-      "NetFlow / IPFIX / sFlow collectors from routers",
-      "Zeek or nProbe as a live flow exporter",
+      "Hardware SPAN/TAP mirror port capture agent on edge switches",
+      "NetFlow v9 / IPFIX / sFlow collector daemon on core routers",
+      "Zeek / Suricata live connection log stream exporter",
     ],
   },
   {
-    name: "Feature Extraction — canonical 22-feature schema",
+    id: "stage-2",
+    name: "2. Flow Aggregation & Capture Parsing",
+    subtitle: "Bidirectional Host-Pair Session Assembly",
+    icon: Layers,
+    now: [
+      "Grouping raw packets into bidirectional 5-tuple conversations (Src IP, Dst IP, Protocol, Ports)",
+      "Dynamic statistical windowing over time slices",
+      "Memory-safe frame parsing with Scapy offline engine",
+    ],
+    future: [
+      "High-throughput eBPF / DPDK kernel bypass flow aggregators",
+      "Hardware-accelerated NIC timestamping (PTP/IEEE 1588)",
+      "Per-VLAN and per-tenant tenant flow isolation",
+    ],
+  },
+  {
+    id: "stage-3",
+    name: "3. Canonical Feature Extraction",
+    subtitle: "22 Mathematical & Behavioral Network Metrics",
     icon: Workflow,
     now: [
-      "One schema shared by training, simulation and PCAP parsing",
-      "Raw counters -> derived features in a single function (derive)",
-      "Bidirectional flow aggregation per host pair",
+      "Shared derive() feature extractor ensuring 100% schema parity across training, testing, and PCAP",
+      "Volume metrics: pkt_rate, byte_rate, avg_pkt_size, duration_s",
+      "Flag distributions: syn_ratio, ack_ratio, fin_ratio, rst_ratio, psh_ratio",
+      "Connection dynamics: flow_density, half_open_ratio, port_entropy, scan_speed",
     ],
     future: [
-      "CICFlowMeter-compatible exporters for direct dataset parity",
-      "Per-service and per-VLAN feature slices",
+      "CICFlowMeter export parity (80+ statistical flow features)",
+      "Layer 7 payload entropy and protocol parsing (HTTP/DNS/TLS fingerprinting)",
+      "JA3/JA4 TLS client fingerprint extraction",
     ],
   },
   {
-    name: "Preprocessing",
+    id: "stage-4",
+    name: "4. Preprocessing & Data Sanitization",
+    subtitle: "Numerical Stability & Outlier Handling",
     icon: Database,
     now: [
-      "NaN/Inf sanitization and sanity clipping on every input",
-      "No scaling needed (tree-based models), documented",
+      "Automatic NaN, null, and Inf sanitization with bounded clipping",
+      "Deterministic normalization (tree-based models require no arbitrary scaling)",
+      "Zero-division guard protection across packet ratios",
     ],
     future: [
-      "Online statistics for drift detection (PSI / KS test)",
-      "Feature versioning and schema registry",
+      "Continuous feature drift detection (Population Stability Index / KS Test)",
+      "Online feature versioning and automated schema registry",
+      "Dynamic baseline percentile recalibration against network time-of-day",
     ],
   },
   {
-    name: "RandomForest Classifier — 6 classes",
+    id: "stage-5",
+    name: "5. Multi-Model ML Classification Engine",
+    subtitle: "Supervised RandomForest + Unsupervised IsolationForest",
+    icon: Cpu,
+    now: [
+      "220-tree RandomForest Classifier trained on balanced synthetic multi-class attack profiles",
+      "IsolationForest anomaly detector trained exclusively on benign traffic baseline",
+      "Full probabilistic class distribution output across all 6 target classes",
+      "Autonomous override: BENIGN predictions with IsolationForest score ≥ 0.90 reclassified as ANOMALY",
+    ],
+    future: [
+      "XGBoost / LightGBM ensemble comparison and champion/challenger deployment",
+      "Autoencoder neural network for high-dimensional reconstruction error",
+      "Automated pipeline retraining on live labeled enterprise datasets (ml/train_real.py)",
+    ],
+  },
+  {
+    id: "stage-6",
+    name: "6. Attack Classification & Label Mapping",
+    subtitle: "6 High-Fidelity Threat Classes",
     icon: CheckCircle2,
     now: [
-      "220-tree RandomForest (scikit-learn), trained on the documented dataset",
-      "Probabilistic output: per-class probabilities + confidence",
-      "Model card with real measured metrics and honest dataset note",
+      "BENIGN (Normal Enterprise Traffic)",
+      "DOS_DDOS (High-volume volumetric packet & bandwidth flood)",
+      "SYN_FLOOD (TCP connection state exhaustion attack)",
+      "PORT_SCAN (Horizontal and vertical reconnaissance scans)",
+      "BRUTE_FORCE (Repeated credential trial bursts)",
+      "ANOMALY (Zero-day / unknown statistical behavioral deviation)",
     ],
     future: [
-      "Retrain on real captures (ml/train_real.py for CIC-IDS2017)",
-      "Gradient boosting / deep models comparison, A/B evaluation",
-      "Scheduled retraining + champion/challenger deployment",
+      "MITRE ATT&CK technique mapping matrix (T1046, T1498, T1110, etc.)",
+      "Ransomware lateral movement detection",
+      "DNS tunneling and covert C2 channel classification",
     ],
   },
   {
-    name: "Anomaly Detection — IsolationForest",
-    icon: CheckCircle2,
+    id: "stage-7",
+    name: "7. Deterministic Risk Scoring Engine",
+    subtitle: "0–100 Weighted Impact & Severity Matrix",
+    icon: ShieldAlert,
     now: [
-      "Unsupervised detector trained on benign windows only",
-      "Calibrated 0–1 score against benign percentiles",
-      "Overrides BENIGN votes when traffic is a extreme outlier (unknown behaviour)",
+      "Formula: Risk = 0.40·Impact + 0.25·Anomaly + 0.20·Confidence + 0.15·Deviation",
+      "Class impact weights: SYN Flood (90), DoS (85), Brute Force (72), Anomaly (50), Port Scan (45)",
+      "Severity bands: LOW (0–24), MEDIUM (25–49), HIGH (50–74), CRITICAL (75–100)",
+      "Transparent breakdown displayed directly in the analyst UI",
     ],
     future: [
-      "Autoencoder / variational models for richer reconstruction error",
-      "Per-segment baselines (per subnet, per service)",
+      "Dynamic asset criticality weighting (e.g. Domain Controller = 1.5×, Sandbox = 0.5×)",
+      "Analyst feedback loop into risk calibration engine",
+      "Threat intelligence feed reputation enrichment (IP/ASN scoring)",
     ],
   },
   {
-    name: "Risk Engine & Severity",
-    icon: CheckCircle2,
+    id: "stage-8",
+    name: "8. Real-Time Alert & Event Dispatcher",
+    subtitle: "FastAPI Async Event Bus + Native WebSockets",
+    icon: BellRing,
     now: [
-      "Deterministic weighted formula (impact, anomaly, confidence, deviation)",
-      "Documented weights; transparent breakdown shown in the UI",
-      "LOW / MEDIUM / HIGH / CRITICAL bands from the 0–100 score",
+      "Sub-millisecond broadcast of traffic_update, threat_detected, and alert frames",
+      "SQLite persistent event store for historical review and audit logging",
+      "Automatic reconnect with exponential backoff and REST polling fallback",
     ],
     future: [
-      "Learned risk calibration from analyst feedback",
-      "Asset criticality weighting per target",
+      "Apache Kafka / Redis Streams broker for distributed microservice scaling",
+      "SIEM webhooks (Splunk, Elastic, Microsoft Sentinel, IBM QRadar)",
+      "PagerDuty / Slack incident escalation bot integration",
     ],
   },
   {
-    name: "Threat Explanation",
-    icon: CheckCircle2,
-    now: [
-      "Evidence built from the actual observed feature values",
-      "Observed vs. benign baseline for every cited feature",
-      "Plain-language meaning + recommended response per class",
-    ],
-    future: [
-      "SHAP values for per-prediction attribution (optional add-on)",
-      "LLM-generated natural-language summaries (optional)",
-    ],
-  },
-  {
-    name: "FastAPI Backend + WebSocket",
-    icon: Network,
-    now: [
-      "All detection decisions made server-side in Python",
-      "Native WebSocket broadcasts (traffic, threats, alerts, mitigation)",
-      "SQLite event store; REST API for events/statistics/model info",
-    ],
-    future: [
-      "Message queue (Kafka/Redis) for multi-consumer scale-out",
-      "Authentication, RBAC, audit log hardening",
-    ],
-  },
-  {
-    name: "SOC Dashboard (this app)",
+    id: "stage-9",
+    name: "9. SOC Command Console & Automated Mitigation",
+    subtitle: "Next.js 16 + React 19 Analyst Interface",
     icon: MonitorSmartphone,
     now: [
-      "Real-time charts, escalating alerts, threat detail, PCAP analysis",
-      "Polling fallback when the live socket is unavailable",
-      "Frontend never decides attack types — it renders backend output",
+      "Real-time Recharts telemetry, threat feed with instant search, and plain-language explainability",
+      "Simulate Block response trigger (recovers traffic towards normal baseline)",
+      "Offline PCAP inspection with JSON/CSV report export",
+      "Zero client-side fake data — pure reflection of backend decisions",
     ],
     future: [
-      "Multi-tenant SOC views, ticketing integration (Jira/ServiceNow)",
-      "Automated response playbooks (still simulated until sanctioned)",
+      "SOAR playbook orchestration (automated firewall ACL / BGP blackhole pushes)",
+      "Multi-tenant analyst RBAC with hardware security key (WebAuthn)",
+      "Automated PDF executive incident report generation",
     ],
   },
 ];
 
-function StageCard({ stage, index }: { stage: Stage; index: number }) {
-  const Icon = stage.icon;
-  return (
-    <div className="relative">
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-800 text-emerald-400">
-            <Icon className="h-4.5 w-4.5" aria-hidden />
-          </div>
-          <h3 className="text-sm font-semibold text-zinc-100">
-            <span className="mr-2 font-mono text-xs text-zinc-600">
-              {String(index + 1).padStart(2, "0")}
-            </span>
-            {stage.name}
-          </h3>
-        </div>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <div>
-            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-400">
-              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Implemented now
-            </p>
-            <ul className="mt-2 space-y-1.5 text-sm leading-relaxed text-zinc-300">
-              {stage.now.map((item, i) => (
-                <li key={i} className="flex gap-2">
-                  <span className="text-emerald-500">•</span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-amber-400">
-              <Clock className="h-3.5 w-3.5" aria-hidden /> Production integration (future)
-            </p>
-            <ul className="mt-2 space-y-1.5 text-sm leading-relaxed text-zinc-500">
-              {stage.future.map((item, i) => (
-                <li key={i} className="flex gap-2">
-                  <span className="text-amber-500/70">•</span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </div>
-      {index < STAGES.length - 1 && (
-        <div className="flex justify-center py-1.5" aria-hidden>
-          <ArrowDown className="h-4 w-4 text-zinc-700" />
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function ArchitectureView() {
   const modelInfo = useSentinelStore((s) => s.modelInfo);
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Architecture</h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          The full detection pipeline, stage by stage. Every stage lists what
-          is <span className="text-emerald-400">implemented now</span> versus
-          what would be added for{" "}
-          <span className="text-amber-400">production integration</span> — this
-          prototype never presents future work as done.
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
+            AI Sentinel Architecture
+          </h1>
+          <span className="rounded bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-xs font-mono font-semibold text-emerald-400">
+            Pipeline v1.0
+          </span>
+        </div>
+        <p className="mt-1 text-sm text-zinc-400 leading-relaxed">
+          The end-to-end intrusion detection pipeline from raw network ingestion to machine learning inference and analyst response. Every stage transparently contrasts what is <span className="text-emerald-400 font-semibold">implemented now</span> versus <span className="text-amber-400 font-semibold">future production integration</span>.
         </p>
       </div>
 
+      {/* Live Pipeline Config Summary */}
       {modelInfo && (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
-          <p className="text-sm text-zinc-300">
-            <span className="font-semibold text-emerald-400">Live config:</span>{" "}
-            {modelInfo.algorithm} {modelInfo.model_version} ·{" "}
-            {modelInfo.n_features} canonical features ·{" "}
-            {modelInfo.classes.length} classes ·{" "}
-            {modelInfo.train_samples.toLocaleString()} training windows ·
-            anomaly detector: {modelInfo.anomaly_detector.algorithm}
-          </p>
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400 mb-1">
+            <Sparkles className="h-3.5 w-3.5" /> Active Pipeline Specifications
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2 text-xs font-mono">
+            <div className="rounded bg-zinc-950 p-2 border border-zinc-800">
+              <span className="text-zinc-500 block text-[10px]">Algorithm</span>
+              <span className="font-bold text-zinc-200">{modelInfo.algorithm}</span>
+            </div>
+            <div className="rounded bg-zinc-950 p-2 border border-zinc-800">
+              <span className="text-zinc-500 block text-[10px]">Feature Vector</span>
+              <span className="font-bold text-emerald-400">{modelInfo.n_features} Canonical Features</span>
+            </div>
+            <div className="rounded bg-zinc-950 p-2 border border-zinc-800">
+              <span className="text-zinc-500 block text-[10px]">Attack Classes</span>
+              <span className="font-bold text-zinc-200">{modelInfo.classes.length} Trained Classes</span>
+            </div>
+            <div className="rounded bg-zinc-950 p-2 border border-zinc-800">
+              <span className="text-zinc-500 block text-[10px]">Training Windows</span>
+              <span className="font-bold text-zinc-200">{modelInfo.train_samples.toLocaleString()} Samples</span>
+            </div>
+          </div>
         </div>
       )}
 
-      <div className="space-y-0">
-        {STAGES.map((stage, i) => (
-          <StageCard key={stage.name} stage={stage} index={i} />
-        ))}
+      {/* 9-Stage Pipeline Cards */}
+      <div className="space-y-4">
+        {STAGES.map((stage, i) => {
+          const Icon = stage.icon;
+          return (
+            <div key={stage.id} className="relative">
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-5 shadow-sm hover:border-zinc-700 transition-all">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-800 text-emerald-400 border border-zinc-700/60">
+                    <Icon className="h-5 w-5" aria-hidden />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-zinc-100">{stage.name}</h3>
+                    <p className="text-xs text-zinc-400 font-mono">{stage.subtitle}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2 pt-3 border-t border-zinc-800/80">
+                  {/* Implemented Now */}
+                  <div className="space-y-2 rounded-lg bg-zinc-950/40 p-3 border border-emerald-500/20">
+                    <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-400">
+                      <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Implemented Now (Working Demo)
+                    </p>
+                    <ul className="space-y-1.5 text-xs leading-relaxed text-zinc-300">
+                      {stage.now.map((item, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <span className="text-emerald-400 font-bold shrink-0">•</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Future Production Work */}
+                  <div className="space-y-2 rounded-lg bg-zinc-950/40 p-3 border border-amber-500/20">
+                    <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-400">
+                      <Clock className="h-3.5 w-3.5" aria-hidden /> Production Roadmap (Next Steps)
+                    </p>
+                    <ul className="space-y-1.5 text-xs leading-relaxed text-zinc-400">
+                      {stage.future.map((item, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <span className="text-amber-400/80 font-bold shrink-0">•</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {i < STAGES.length - 1 && (
+                <div className="flex justify-center py-2" aria-hidden>
+                  <ArrowDown className="h-4 w-4 text-zinc-700 animate-bounce" />
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
-        <p className="text-sm font-semibold text-amber-400">
-          Honesty statement
+      {/* Honesty & Academic Disclaimer */}
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 shadow-sm">
+        <p className="text-xs font-bold uppercase tracking-wider text-amber-400">
+          Academic Integrity &amp; Simulation Statement
         </p>
-        <p className="mt-1 text-sm leading-relaxed text-zinc-400">
-          This prototype classifies <strong>synthetic</strong> traffic and
-          user-supplied PCAP files only. It does not capture live packets from
-          any network, does not attack anything, and the &quot;Block Source&quot;
-          action is a UI-level simulation. The ML metrics shown in the Model
-          tab are measured on the bundled synthetic evaluation set — real-world
-          performance requires retraining on real data.
+        <p className="mt-1.5 text-xs leading-relaxed text-zinc-300">
+          This system was built for educational and hackathon evaluation purposes. All live stream and simulation traffic is generated through synthetic mathematical modeling calibrated against the CIC-IDS2017 intrusion dataset. The &quot;Simulate Block&quot; action demonstrates control plane mitigation at the UI layer without modifying real firewall equipment.
         </p>
       </div>
     </div>

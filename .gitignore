@@ -47,8 +47,19 @@ local-*
 dev.log
 dev.out.log
 test
-prompt
+# Virtual environments
+.venv/
+mini-services/ai-sentinel-api/.venv/
 
-server.log
+# Python cache & artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.db
+*.sqlite3
+
+# Large archives
+*.tar
+
 # Skills directory
 /skills/

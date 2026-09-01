@@ -17,6 +17,7 @@ import type {
   StatisticsInfo,
   ThreatEvent,
   TrafficPoint,
+  User,
   ViewName,
   WsMessage,
   WsStatus,
@@ -51,8 +52,22 @@ interface SentinelStore {
   sims: Record<string, SimState>;
   simStartView: string | null; // view to auto-open on first threat
 
+  // ---- auth (demo client-side)
+  user: User | null;
+  authModalOpen: boolean;
+  setAuthModalOpen: (open: boolean) => void;
+  login: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (email: string, name: string, pass: string, role?: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => void;
+
+  // ---- auto defense / active response
+  autoDefense: boolean;
+  setAutoDefense: (enabled: boolean) => void;
+  toggleAutoDefense: () => void;
+
   // ---- actions
   initialize: () => Promise<void>;
+  retryConnection: () => Promise<void>;
   handleWsMessage: (msg: WsMessage) => void;
   selectEvent: (id: string | null) => void;
   dismissAlert: (key: string) => void;
@@ -105,7 +120,101 @@ export const useSentinelStore = create<SentinelStore>((set, get) => ({
   sims: {},
   simStartView: null,
 
+  // Auth state
+  user: null,
+  authModalOpen: false,
+  setAuthModalOpen: (open: boolean) => set({ authModalOpen: open }),
+
+  // Auto defense state
+  autoDefense: false,
+  setAutoDefense: (enabled: boolean) => set({ autoDefense: enabled }),
+  toggleAutoDefense: () => set((s) => ({ autoDefense: !s.autoDefense })),
+
+  login: async (email: string, pass: string) => {
+    if (!email || !pass) {
+      return { success: false, error: "Email and password are required" };
+    }
+    // Check localStorage accounts
+    if (typeof window !== "undefined") {
+      try {
+        const storedUsers = JSON.parse(localStorage.getItem("sentinel_users") || "[]");
+        const found = storedUsers.find((u: { email: string; pass: string }) => u.email.toLowerCase() === email.toLowerCase());
+        if (found) {
+          if (found.pass === pass) {
+            const user: User = { email: found.email, name: found.name, role: found.role || "SOC Analyst" };
+            localStorage.setItem("sentinel_current_user", JSON.stringify(user));
+            set({ user, authModalOpen: false });
+            return { success: true };
+          } else {
+            return { success: false, error: "Invalid password for this account" };
+          }
+        } else {
+          // Check default demo account
+          if (email.toLowerCase() === "analyst@sentinel.soc" && pass === "Sentinel@2026") {
+            const user: User = { email: "analyst@sentinel.soc", name: "Alex Chen", role: "SOC Analyst" };
+            localStorage.setItem("sentinel_current_user", JSON.stringify(user));
+            set({ user, authModalOpen: false });
+            return { success: true };
+          }
+          return { success: false, error: "Account not found. Please sign up." };
+        }
+      } catch {
+        return { success: false, error: "Authentication error" };
+      }
+    }
+    return { success: false, error: "Browser storage unavailable" };
+  },
+
+  signup: async (email: string, name: string, pass: string, role?: string) => {
+    if (!email || !name || !pass) {
+      return { success: false, error: "All fields are required" };
+    }
+    if (pass.length < 6) {
+      return { success: false, error: "Password must be at least 6 characters long" };
+    }
+    if (!/[A-Z]/.test(pass)) {
+      return { success: false, error: "Password must contain at least one uppercase letter" };
+    }
+    if (typeof window !== "undefined") {
+      try {
+        const storedUsers = JSON.parse(localStorage.getItem("sentinel_users") || "[]");
+        if (storedUsers.some((u: { email: string }) => u.email.toLowerCase() === email.toLowerCase())) {
+          return { success: false, error: "An account with this email already exists" };
+        }
+        const assignedRole = (role as User["role"]) || "SOC Analyst";
+        const newUserRecord = { email, name, pass, role: assignedRole };
+        storedUsers.push(newUserRecord);
+        localStorage.setItem("sentinel_users", JSON.stringify(storedUsers));
+        return { success: true };
+      } catch {
+        return { success: false, error: "Failed to save account" };
+      }
+    }
+    return { success: false, error: "Browser storage unavailable" };
+  },
+
+  logout: () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("sentinel_current_user");
+    }
+    set({ user: null, authModalOpen: true });
+  },
+
   initialize: async () => {
+    // Restore current user if stored
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("sentinel_current_user");
+        if (stored) {
+          set({ user: JSON.parse(stored) });
+        } else {
+          set({ user: null, authModalOpen: true });
+        }
+      } catch {
+        /* ignore storage parse error */
+      }
+    }
+
     // parallel loads; each failure degrades gracefully
     const tasks = [
       sentinelApi
@@ -133,6 +242,11 @@ export const useSentinelStore = create<SentinelStore>((set, get) => ({
       get().refreshStatistics(),
     ];
     await Promise.allSettled(tasks);
+  },
+
+  retryConnection: async () => {
+    set({ backendOnline: null });
+    await get().initialize();
   },
 
   refreshEvents: async () => {
@@ -172,6 +286,9 @@ export const useSentinelStore = create<SentinelStore>((set, get) => ({
           risk: msg.risk,
           severity: msg.severity,
           prediction: msg.prediction,
+          synCount: msg.syn_count,
+          ackCount: msg.ack_count,
+          totalPackets: msg.total_packets,
         };
         set({
           traffic: [...state.traffic, point].slice(-MAX_TRAFFIC_POINTS),
@@ -208,6 +325,12 @@ export const useSentinelStore = create<SentinelStore>((set, get) => ({
           if (ev.sim_id && state.sims[ev.sim_id]) {
             set({ selectedEventId: ev.id });
             if (state.view === "lab") set({ view: "dashboard" });
+          }
+          // Autonomous Active Defense Trigger
+          if (get().autoDefense && ev.attack !== "BENIGN" && ev.status === "ACTIVE") {
+            setTimeout(() => {
+              void get().mitigateEvent(ev.id);
+            }, 500);
           }
         }
         break;

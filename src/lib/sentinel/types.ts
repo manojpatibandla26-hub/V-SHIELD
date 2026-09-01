@@ -336,6 +336,12 @@ export interface PcapResult {
 }
 
 // ---------------------------------------------------------------- UI models
+export interface User {
+  email: string;
+  name: string;
+  role: "SOC Analyst" | "Lead Responder" | "Security Lead" | "Guest Evaluator";
+}
+
 export interface TrafficPoint {
   t: number;
   pktRate: number;
@@ -344,6 +350,9 @@ export interface TrafficPoint {
   risk: number;
   severity: Severity;
   prediction: AttackLabel;
+  synCount?: number;
+  ackCount?: number;
+  totalPackets?: number;
 }
 
 export interface AlertToastItem {
@@ -371,3 +380,4 @@ export interface SimState {
   final_severity?: Severity;
   error?: string;
 }
+
