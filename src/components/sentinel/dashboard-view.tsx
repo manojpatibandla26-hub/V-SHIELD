@@ -136,7 +136,7 @@ export function DashboardView() {
   const mitigateEvent = useSentinelStore((s) => s.mitigateEvent);
 
   const status = statistics?.network_status ?? "PROTECTED";
-  const meta = STATUS_META[status];
+  const meta = STATUS_META[status] || STATUS_META.PROTECTED;
   const currentRisk = statistics?.current_risk ?? 0;
   const riskSev =
     currentRisk >= 75
@@ -148,11 +148,11 @@ export function DashboardView() {
           : "LOW";
   const blocked = statistics?.blocked_sources ?? [];
 
-  const activeEvents = events.filter(
-    (e) => e.status === "ACTIVE" && e.attack !== "BENIGN",
+  const activeEvents = (events || []).filter(
+    (e) => e?.status === "ACTIVE" && e?.attack !== "BENIGN",
   );
-  const critical = statistics?.totals.critical_total ?? 0;
-  const loading = statistics === null;
+  const critical = statistics?.totals?.critical_total ?? 0;
+  const loading = statistics === null && backendOnline === null;
 
   return (
     <div className="space-y-5">
@@ -230,20 +230,20 @@ export function DashboardView() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-sm text-rose-200 uppercase tracking-wide">
-                  Active Attack in Progress: {activeEvents[0].explanation.classification}
+                  Active Attack in Progress: {activeEvents[0]?.explanation?.classification ?? activeEvents[0]?.attack}
                 </span>
                 <span className="rounded bg-rose-500/20 px-1.5 py-0.5 text-[10px] font-mono text-rose-300">
-                  {activeEvents[0].severity} SEVERITY
+                  {activeEvents[0]?.severity ?? "HIGH"} SEVERITY
                 </span>
               </div>
               <p className="text-xs text-zinc-400 mt-0.5">
-                Target: <span className="text-zinc-200 font-mono">{activeEvents[0].target || "Internal Subnet"}</span> · Attacker Source IP: <span className="text-rose-300 font-mono font-bold">{activeEvents[0].source}</span>
+                Target: <span className="text-zinc-200 font-mono">{activeEvents[0]?.target || "Internal Subnet"}</span> · Attacker Source IP: <span className="text-rose-300 font-mono font-bold">{activeEvents[0]?.source}</span>
               </p>
             </div>
           </div>
 
           <Button
-            onClick={() => void mitigateEvent(activeEvents[0].id)}
+            onClick={() => activeEvents[0]?.id && void mitigateEvent(activeEvents[0].id)}
             className="shrink-0 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm px-4 shadow-lg flex items-center gap-2"
           >
             <Shield className="h-4 w-4" />
@@ -258,14 +258,14 @@ export function DashboardView() {
           label="Network Status"
           value={meta.label}
           icon={meta.icon}
-          accent={meta.cls.split(" ")[2]}
+          accent={meta.cls?.split(" ")[2]}
           loading={loading}
         />
-        <LiveTrafficKPI loading={loading} fallbackPkt={statistics?.traffic.pkt_rate ?? 0} />
+        <LiveTrafficKPI loading={loading} fallbackPkt={statistics?.traffic?.pkt_rate ?? 0} />
         <SummaryCard
           label="Active Threats"
           value={String(activeEvents.length)}
-          hint={`${statistics?.totals.threats_total ?? 0} total detected`}
+          hint={`${statistics?.totals?.threats_total ?? 0} total detected`}
           icon={AlertTriangle}
           accent={activeEvents.length > 0 ? "text-amber-400" : "text-zinc-400"}
           highlight={activeEvents.length > 0}
@@ -284,13 +284,13 @@ export function DashboardView() {
           value={`${currentRisk}/100`}
           hint={`${riskSev} aggregate`}
           icon={Gauge}
-          accent={SEVERITY_STYLE[riskSev].text}
+          accent={SEVERITY_STYLE[riskSev]?.text ?? "text-emerald-400"}
           loading={loading}
         />
         <SummaryCard
           label="Blocked Sources"
           value={String(blocked.length)}
-          hint={blocked.length > 0 ? `${blocked[0].source} (active)` : "simulated firewall"}
+          hint={blocked.length > 0 ? `${blocked[0]?.source} (active)` : "simulated firewall"}
           icon={Ban}
           accent="text-zinc-300"
           loading={loading}

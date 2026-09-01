@@ -270,20 +270,30 @@ export const useSentinelStore = create<SentinelStore>((set, get) => ({
     if (!get().statistics) {
       set({
         statistics: {
-          current_risk: 0,
           network_status: "PROTECTED",
-          blocked_sources: [],
+          current_risk: 0,
           totals: {
+            events_total: 0,
+            threats_total: 0,
             critical_total: 0,
-            high_total: 0,
-            medium_total: 0,
-            low_total: 0,
-            mitigated_total: 0,
-            resolved_total: 0,
-            active_total: 0,
+            active_threats: 0,
+            mitigated: 0,
+            resolved: 0,
           },
-          baseline_pkt_rate: 450,
-          traffic_window_s: 2,
+          traffic: {
+            pkt_rate: 0,
+            byte_rate: 0,
+            flows: 0,
+            prediction: "BENIGN",
+          },
+          blocked_sources: [],
+          uptime_s: 0,
+          severity_bands: {
+            LOW: "0-24",
+            MEDIUM: "25-49",
+            HIGH: "50-74",
+            CRITICAL: "75-100",
+          },
         },
       });
     }

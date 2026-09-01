@@ -90,7 +90,21 @@ export function ThreatDetail() {
   }
 
   const sev = SEVERITY_STYLE[ev.severity] || SEVERITY_STYLE.LOW;
-  const exp = ev.explanation;
+  const exp = ev.explanation || {
+    classification: ev.attack,
+    headline: "Automated anomaly alert",
+    meaning: "Anomalous traffic profile detected by detection models.",
+    recommendation: "Inspect traffic parameters and apply rate-limiting or firewall drop rules.",
+    evidence: [],
+  };
+  const obs = ev.observed || {
+    pkt_rate: 0,
+    flow_count: 0,
+    syn_count: 0,
+    ack_count: 0,
+    duration_s: 0,
+    distinct_dst_ports: 0,
+  };
 
   const handleCopyJson = async () => {
     try {
@@ -129,7 +143,7 @@ export function ThreatDetail() {
           </div>
           <StatusBadge status={ev.status} />
         </div>
-        <h2 className="mt-1 text-lg font-bold text-zinc-100">{exp.classification}</h2>
+        <h2 className="mt-1 text-lg font-bold text-zinc-100">{exp.classification || ev.attack}</h2>
         <p className="text-xs opacity-90 leading-tight">
           {exp.headline} · {fmtTimeAgo(ev.ts)}
         </p>
@@ -154,19 +168,19 @@ export function ThreatDetail() {
       <div className="space-y-4 p-4">
         {/* Risk Score & ML Confidence Gauge */}
         <div className="flex items-center gap-4 rounded-xl border border-zinc-800/80 bg-zinc-950/40 p-3.5">
-          <RiskGauge risk={ev.risk} severity={ev.severity} size={120} />
+          <RiskGauge risk={ev.risk ?? 0} severity={ev.severity ?? "LOW"} size={120} />
           <div className="min-w-0 flex-1 space-y-2.5">
             <div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-zinc-400 font-medium">ML Confidence</span>
                 <span className="font-mono font-bold text-zinc-200">
-                  {(ev.confidence * 100).toFixed(1)}%
+                  {((ev.confidence ?? 0) * 100).toFixed(1)}%
                 </span>
               </div>
               <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-zinc-800">
                 <div
                   className={cn("h-full rounded-full transition-all duration-500", sev.bar)}
-                  style={{ width: `${ev.confidence * 100}%` }}
+                  style={{ width: `${(ev.confidence ?? 0) * 100}%` }}
                 />
               </div>
             </div>
@@ -174,14 +188,14 @@ export function ThreatDetail() {
             <div className="flex items-center justify-between text-xs">
               <span className="text-zinc-400 font-medium">Isolation Forest Anomaly</span>
               <span className="font-mono font-bold text-zinc-200">
-                {ev.anomaly_score.toFixed(2)} / 1.00
+                {(ev.anomaly_score ?? 0).toFixed(2)} / 1.00
               </span>
             </div>
 
             <div className="flex items-center justify-between text-xs">
               <span className="text-zinc-400 font-medium">Detection Model</span>
               <span className="font-mono text-zinc-300 text-[11px]">
-                {ev.model_version}
+                {ev.model_version ?? "v1.0"}
               </span>
             </div>
           </div>
@@ -211,7 +225,7 @@ export function ThreatDetail() {
             Why did the ML system trigger?
           </p>
           <ul className="space-y-1.5">
-            {exp.evidence.map((evidence, i) => (
+            {(exp.evidence || []).map((evidence, i) => (
               <li
                 key={i}
                 className="flex items-start gap-2 rounded-lg border border-zinc-800/80 bg-zinc-950/40 p-2.5 text-xs text-zinc-300"
@@ -234,12 +248,12 @@ export function ThreatDetail() {
             Telemetry Snapshot
           </p>
           <div className="grid grid-cols-3 gap-2">
-            <ObservedStat label="Packet Rate" value={`${fmtNum(ev.observed.pkt_rate)}/s`} />
-            <ObservedStat label="Flows" value={fmtNum(ev.observed.flow_count)} />
-            <ObservedStat label="SYN Count" value={fmtNum(ev.observed.syn_count)} />
-            <ObservedStat label="ACK Count" value={fmtNum(ev.observed.ack_count)} />
-            <ObservedStat label="Duration" value={`${ev.observed.duration_s.toFixed(1)}s`} />
-            <ObservedStat label="Ports Hit" value={fmtNum(ev.observed.distinct_dst_ports)} />
+            <ObservedStat label="Packet Rate" value={`${fmtNum(obs.pkt_rate ?? 0)}/s`} />
+            <ObservedStat label="Flows" value={fmtNum(obs.flow_count ?? 0)} />
+            <ObservedStat label="SYN Count" value={fmtNum(obs.syn_count ?? 0)} />
+            <ObservedStat label="ACK Count" value={fmtNum(obs.ack_count ?? 0)} />
+            <ObservedStat label="Duration" value={`${(obs.duration_s ?? 0).toFixed(1)}s`} />
+            <ObservedStat label="Ports Hit" value={fmtNum(obs.distinct_dst_ports ?? 0)} />
           </div>
         </div>
 
