@@ -24,6 +24,22 @@ import type {
   WsMessage,
   WsStatus,
 } from "./types";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import type { User as SupabaseAuthUser } from "@supabase/supabase-js";
+
+function mapSupabaseUser(sbUser: SupabaseAuthUser): User {
+  const meta = sbUser.user_metadata || {};
+  return {
+    id: sbUser.id,
+    email: sbUser.email || "",
+    name:
+      meta.full_name ||
+      meta.name ||
+      (sbUser.email ? sbUser.email.split("@")[0] : "SOC Analyst"),
+    role: (meta.role as User["role"]) || "SOC Analyst",
+    emailConfirmed: Boolean(sbUser.email_confirmed_at),
+  };
+}
 
 const MAX_TRAFFIC_POINTS = 150;
 const MAX_EVENTS = 200;
@@ -54,13 +70,20 @@ interface SentinelStore {
   sims: Record<string, SimState>;
   simStartView: string | null; // view to auto-open on first threat
 
-  // ---- auth (demo client-side)
+  // ---- auth (Supabase Authentication)
   user: User | null;
+  authLoading: boolean;
   authModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
   login: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (email: string, name: string, pass: string, role?: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
+  signup: (
+    email: string,
+    name: string,
+    pass: string,
+    role?: string,
+  ) => Promise<{ success: boolean; error?: string; message?: string }>;
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string; message?: string }>;
+  logout: () => Promise<void>;
 
   // ---- auto defense / active response
   autoDefense: boolean;
@@ -133,6 +156,7 @@ export const useSentinelStore = create<SentinelStore>((set, get) => ({
 
   // Auth state
   user: null,
+  authLoading: true,
   authModalOpen: false,
   setAuthModalOpen: (open: boolean) => set({ authModalOpen: open }),
 
@@ -142,73 +166,192 @@ export const useSentinelStore = create<SentinelStore>((set, get) => ({
   toggleAutoDefense: () => set((s) => ({ autoDefense: !s.autoDefense })),
 
   login: async (email: string, pass: string) => {
-    if (!email || !pass) {
-      return { success: false, error: "Email and password are required" };
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !pass) {
+      return { success: false, error: "Email and password are required." };
     }
-    // Check localStorage accounts
+
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: pass,
+        });
+        if (error) {
+          const msg =
+            error.message === "Invalid login credentials"
+              ? "Invalid email or password."
+              : error.message;
+          return { success: false, error: msg };
+        }
+        if (data.user) {
+          const user = mapSupabaseUser(data.user);
+          set({ user, authModalOpen: false, authLoading: false });
+          return { success: true };
+        }
+        return { success: false, error: "Authentication session could not be established." };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Unable to connect. Please try again.";
+        return { success: false, error: msg };
+      }
+    }
+
+    // Demo/Development fallback when Supabase env keys are not yet configured
     if (typeof window !== "undefined") {
       try {
         const storedUsers = JSON.parse(localStorage.getItem("sentinel_users") || "[]");
-        const found = storedUsers.find((u: { email: string; pass: string }) => u.email.toLowerCase() === email.toLowerCase());
+        const found = storedUsers.find(
+          (u: { email: string; pass: string }) => u.email.toLowerCase() === cleanEmail.toLowerCase(),
+        );
         if (found) {
           if (found.pass === pass) {
-            const user: User = { email: found.email, name: found.name, role: found.role || "SOC Analyst" };
+            const user: User = {
+              email: found.email,
+              name: found.name,
+              role: found.role || "SOC Analyst",
+              emailConfirmed: true,
+            };
             localStorage.setItem("sentinel_current_user", JSON.stringify(user));
-            set({ user, authModalOpen: false });
+            set({ user, authModalOpen: false, authLoading: false });
             return { success: true };
           } else {
-            return { success: false, error: "Invalid password for this account" };
+            return { success: false, error: "Invalid email or password." };
           }
         } else {
-          // Check default demo account
-          if (email.toLowerCase() === "analyst@sentinel.soc" && pass === "Sentinel@2026") {
-            const user: User = { email: "analyst@sentinel.soc", name: "Alex Chen", role: "SOC Analyst" };
+          if (cleanEmail.toLowerCase() === "analyst@sentinel.soc" && pass === "Sentinel@2026") {
+            const user: User = {
+              email: "analyst@sentinel.soc",
+              name: "Alex Chen",
+              role: "SOC Analyst",
+              emailConfirmed: true,
+            };
             localStorage.setItem("sentinel_current_user", JSON.stringify(user));
-            set({ user, authModalOpen: false });
+            set({ user, authModalOpen: false, authLoading: false });
             return { success: true };
           }
-          return { success: false, error: "Account not found. Please sign up." };
+          return { success: false, error: "Invalid email or password." };
         }
       } catch {
         return { success: false, error: "Authentication error" };
       }
     }
-    return { success: false, error: "Browser storage unavailable" };
+    return { success: false, error: "Unable to authenticate at this time." };
   },
 
   signup: async (email: string, name: string, pass: string, role?: string) => {
-    if (!email || !name || !pass) {
-      return { success: false, error: "All fields are required" };
+    const cleanEmail = email.trim();
+    const cleanName = name.trim();
+    if (!cleanEmail || !cleanName || !pass) {
+      return { success: false, error: "All fields are required." };
     }
     if (pass.length < 6) {
-      return { success: false, error: "Password must be at least 6 characters long" };
+      return { success: false, error: "Password must contain at least 6 characters and at least one uppercase letter." };
     }
     if (!/[A-Z]/.test(pass)) {
-      return { success: false, error: "Password must contain at least one uppercase letter" };
+      return { success: false, error: "Password must contain at least 6 characters and at least one uppercase letter." };
     }
+
+    const assignedRole = (role as User["role"]) || "SOC Analyst";
+
+    if (isSupabaseConfigured) {
+      try {
+        const redirectUrl = typeof window !== "undefined" ? window.location.origin : undefined;
+        const { data, error } = await supabase.auth.signUp({
+          email: cleanEmail,
+          password: pass,
+          options: {
+            emailRedirectTo: redirectUrl,
+            data: {
+              full_name: cleanName,
+              role: assignedRole,
+            },
+          },
+        });
+        if (error) {
+          return { success: false, error: error.message };
+        }
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+          return { success: false, error: "An account with this email already exists. Please sign in." };
+        }
+        if (data.user && !data.session) {
+          return {
+            success: true,
+            message: "Account created successfully. Please check your email if confirmation is required.",
+          };
+        }
+        if (data.user && data.session) {
+          const user = mapSupabaseUser(data.user);
+          set({ user, authModalOpen: false, authLoading: false });
+          return { success: true, message: "Account created successfully!" };
+        }
+        return { success: true, message: "Account created successfully. You may now sign in." };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Unable to connect. Please try again.";
+        return { success: false, error: msg };
+      }
+    }
+
+    // Demo/Development fallback
     if (typeof window !== "undefined") {
       try {
         const storedUsers = JSON.parse(localStorage.getItem("sentinel_users") || "[]");
-        if (storedUsers.some((u: { email: string }) => u.email.toLowerCase() === email.toLowerCase())) {
-          return { success: false, error: "An account with this email already exists" };
+        if (storedUsers.some((u: { email: string }) => u.email.toLowerCase() === cleanEmail.toLowerCase())) {
+          return { success: false, error: "An account with this email already exists." };
         }
-        const assignedRole = (role as User["role"]) || "SOC Analyst";
-        const newUserRecord = { email, name, pass, role: assignedRole };
+        const newUserRecord = { email: cleanEmail, name: cleanName, pass, role: assignedRole };
         storedUsers.push(newUserRecord);
         localStorage.setItem("sentinel_users", JSON.stringify(storedUsers));
-        return { success: true };
+        return { success: true, message: "Account created successfully. You can now sign in." };
       } catch {
-        return { success: false, error: "Failed to save account" };
+        return { success: false, error: "Failed to save account locally." };
       }
     }
-    return { success: false, error: "Browser storage unavailable" };
+    return { success: false, error: "Unable to create account." };
   },
 
-  logout: () => {
+  resetPassword: async (email: string) => {
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
+      return { success: false, error: "Please provide a valid email address." };
+    }
+
+    if (isSupabaseConfigured) {
+      try {
+        const redirectUrl = typeof window !== "undefined" ? `${window.location.origin}` : undefined;
+        const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+          redirectTo: redirectUrl,
+        });
+        if (error) {
+          return { success: false, error: error.message };
+        }
+        return {
+          success: true,
+          message: "Password reset email sent. Please check your inbox for instructions.",
+        };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Unable to send password reset request.";
+        return { success: false, error: msg };
+      }
+    }
+
+    return {
+      success: true,
+      message: "Password reset requested. (Supabase credentials required for live reset emails).",
+    };
+  },
+
+  logout: async () => {
+    try {
+      if (isSupabaseConfigured) {
+        await supabase.auth.signOut();
+      }
+    } catch {
+      /* signOut error handled */
+    }
     if (typeof window !== "undefined") {
       localStorage.removeItem("sentinel_current_user");
     }
-    set({ user: null, authModalOpen: true });
+    set({ user: null, authModalOpen: true, authLoading: false });
   },
 
   // ---- packet capture
@@ -252,17 +395,54 @@ export const useSentinelStore = create<SentinelStore>((set, get) => ({
   },
 
   initialize: async () => {
-    // Restore current user if stored
-    if (typeof window !== "undefined") {
+    // Restore session from Supabase if configured
+    if (isSupabaseConfigured) {
       try {
-        const stored = localStorage.getItem("sentinel_current_user");
-        if (stored) {
-          set({ user: JSON.parse(stored) });
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          set({
+            user: mapSupabaseUser(session.user),
+            authLoading: false,
+            authModalOpen: false,
+          });
         } else {
-          set({ user: null, authModalOpen: true });
+          set({ user: null, authLoading: false, authModalOpen: true });
         }
       } catch {
-        /* ignore storage parse error */
+        set({ user: null, authLoading: false, authModalOpen: true });
+      }
+
+      // Keep session in sync with Supabase auth events (sign in, sign out, token refresh)
+      try {
+        supabase.auth.onAuthStateChange((_event, session) => {
+          if (session?.user) {
+            set({
+              user: mapSupabaseUser(session.user),
+              authLoading: false,
+              authModalOpen: false,
+            });
+          } else {
+            set({ user: null, authLoading: false });
+          }
+        });
+      } catch {
+        /* listener setup */
+      }
+    } else {
+      // Local demo fallback
+      if (typeof window !== "undefined") {
+        try {
+          const stored = localStorage.getItem("sentinel_current_user");
+          if (stored) {
+            set({ user: JSON.parse(stored), authLoading: false });
+          } else {
+            set({ user: null, authLoading: false, authModalOpen: true });
+          }
+        } catch {
+          set({ user: null, authLoading: false, authModalOpen: true });
+        }
+      } else {
+        set({ authLoading: false });
       }
     }
 

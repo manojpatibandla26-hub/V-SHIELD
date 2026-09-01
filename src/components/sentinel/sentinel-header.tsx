@@ -221,7 +221,7 @@ export function SentinelHeader({
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-zinc-800" />
                   <DropdownMenuItem
-                    onClick={logout}
+                    onClick={() => void logout()}
                     className="text-xs text-rose-400 focus:bg-rose-500/10 focus:text-rose-300 cursor-pointer"
                   >
                     <LogOut className="mr-2 h-3.5 w-3.5" /> Sign Out

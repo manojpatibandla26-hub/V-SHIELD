@@ -34,7 +34,7 @@ const args = [
   '--port', PORT,
 ]
 if (!noReload) {
-  args.push('--reload', '--reload-include', '*.py')
+  args.push('--reload', '--reload-dir', 'app', '--reload-exclude', '.venv', '--reload-exclude', 'pcaps')
 }
 
 function portInUse(port, host) {

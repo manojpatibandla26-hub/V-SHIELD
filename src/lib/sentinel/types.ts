@@ -337,9 +337,11 @@ export interface PcapResult {
 
 // ---------------------------------------------------------------- UI models
 export interface User {
+  id?: string;
   email: string;
   name: string;
   role: "SOC Analyst" | "Lead Responder" | "Security Lead" | "Guest Evaluator";
+  emailConfirmed?: boolean;
 }
 
 export interface TrafficPoint {
