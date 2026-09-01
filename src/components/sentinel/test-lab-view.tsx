@@ -212,6 +212,15 @@ function ScenarioCard({ type }: { type: string }) {
 
 export function TestLabView() {
   const scenarios = useSentinelStore((s) => s.scenarios);
+  const captureStatus = useSentinelStore((s) => s.captureStatus);
+  const interfaces = useSentinelStore((s) => s.interfaces);
+  const selectedInterface = useSentinelStore((s) => s.selectedInterface);
+  const setSelectedInterface = useSentinelStore((s) => s.setSelectedInterface);
+  const startCapture = useSentinelStore((s) => s.startCapture);
+  const stopCapture = useSentinelStore((s) => s.stopCapture);
+  const refreshCaptureStatus = useSentinelStore((s) => s.refreshCaptureStatus);
+
+  const isCapturing = captureStatus?.status === "CAPTURE_RUNNING";
 
   return (
     <div className="space-y-6">
@@ -222,12 +231,105 @@ export function TestLabView() {
             Security Test Lab
           </h1>
           <span className="rounded bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 text-xs font-mono font-semibold text-amber-400">
-            Safe Mode
+            Safe Mode & Live Sniffer
           </span>
         </div>
         <p className="mt-1 text-sm text-zinc-400 leading-relaxed">
-          Execute controlled synthetic intrusion scenarios to demonstrate real-time AI Sentinel detection, IsolationForest anomaly scoring, and automated alert escalation.
+          Execute controlled synthetic intrusion scenarios or capture live traffic from your authorized local network interface to demonstrate real-time AI Sentinel detection.
         </p>
+      </div>
+
+      {/* Live Packet Sniffing Controller */}
+      <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4 sm:p-5 shadow-sm space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+              <Radio className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-zinc-100 text-base">Authorized Live Packet Capture (Scapy)</h3>
+                <span className={cn(
+                  "rounded px-2 py-0.5 text-[10px] font-mono font-semibold border",
+                  isCapturing
+                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 animate-pulse"
+                    : "bg-zinc-800 text-zinc-400 border-zinc-700"
+                )}>
+                  {captureStatus?.status ?? "CAPTURE_AVAILABLE"}
+                </span>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Capture live frames from your local network card, extract canonical feature windows, and pass to RandomForest in real-time.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            {isCapturing ? (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => void stopCapture()}
+                className="font-semibold text-xs"
+              >
+                <Ban className="h-4 w-4 mr-1.5" /> Stop Live Sniffing
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={() => void startCapture(selectedInterface ?? undefined)}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs"
+              >
+                <Play className="h-4 w-4 mr-1.5" /> Start Live Sniffing
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Interface Selector & Capture Telemetry */}
+        <div className="grid gap-3 sm:grid-cols-3 pt-2 border-t border-zinc-800/80 text-xs">
+          <div className="space-y-1">
+            <label className="text-zinc-400 font-medium">Network Interface</label>
+            <select
+              value={selectedInterface ?? ""}
+              onChange={(e) => setSelectedInterface(e.target.value || null)}
+              disabled={isCapturing}
+              aria-label="Select Network Interface"
+              className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            >
+              {interfaces.length > 0 ? (
+                interfaces.map((iface) => (
+                  <option key={iface.id} value={iface.name}>
+                    {iface.name} {iface.ip && iface.ip !== "0.0.0.0" ? `(${iface.ip})` : ""}
+                  </option>
+                ))
+              ) : (
+                <option value="">Default Host Interface</option>
+              )}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <span className="text-zinc-400 font-medium">Packets Sniffed</span>
+            <div className="font-mono text-zinc-100 font-bold text-sm tabular-nums py-1">
+              {captureStatus?.packets_captured ?? 0} frames
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <span className="text-zinc-400 font-medium">Active Stream Mode</span>
+            <div className="font-mono text-emerald-400 font-semibold text-xs py-1">
+              {captureStatus?.mode ?? "SYNTHETIC_BASELINE"}
+            </div>
+          </div>
+        </div>
+
+        {captureStatus?.error && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-300 flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0 text-amber-400" />
+            <span>{captureStatus.error}</span>
+          </div>
+        )}
       </div>
 
       {/* Safety Demonstration Environment Banner */}
@@ -267,3 +369,4 @@ export function TestLabView() {
     </div>
   );
 }
+

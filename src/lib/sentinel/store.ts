@@ -9,6 +9,8 @@ import { create } from "zustand";
 import { sentinelApi } from "./api";
 import type {
   AlertToastItem,
+  CaptureInterface,
+  CaptureStatus,
   HealthInfo,
   ModelInfo,
   PcapSampleInfo,
@@ -64,6 +66,15 @@ interface SentinelStore {
   autoDefense: boolean;
   setAutoDefense: (enabled: boolean) => void;
   toggleAutoDefense: () => void;
+
+  // ---- packet capture
+  captureStatus: CaptureStatus | null;
+  interfaces: CaptureInterface[];
+  selectedInterface: string | null;
+  setSelectedInterface: (iface: string | null) => void;
+  startCapture: (iface?: string) => Promise<void>;
+  stopCapture: () => Promise<void>;
+  refreshCaptureStatus: () => Promise<void>;
 
   // ---- actions
   initialize: () => Promise<void>;
@@ -200,6 +211,46 @@ export const useSentinelStore = create<SentinelStore>((set, get) => ({
     set({ user: null, authModalOpen: true });
   },
 
+  // ---- packet capture
+  captureStatus: null,
+  interfaces: [],
+  selectedInterface: null,
+  setSelectedInterface: (iface) => set({ selectedInterface: iface }),
+
+  startCapture: async (iface?: string) => {
+    try {
+      const res = await sentinelApi.startCapture(iface ?? get().selectedInterface ?? undefined);
+      set({ captureStatus: res });
+    } catch (e) {
+      /* handled gracefully */
+    }
+  },
+
+  stopCapture: async () => {
+    try {
+      const res = await sentinelApi.stopCapture();
+      set({ captureStatus: res });
+    } catch (e) {
+      /* handled gracefully */
+    }
+  },
+
+  refreshCaptureStatus: async () => {
+    try {
+      const [status, ifaces] = await Promise.all([
+        sentinelApi.captureStatus(),
+        sentinelApi.captureInterfaces(),
+      ]);
+      set({
+        captureStatus: status,
+        interfaces: ifaces.interfaces,
+        selectedInterface: ifaces.interfaces.find((i) => i.is_active)?.name || ifaces.interfaces[0]?.name || null,
+      });
+    } catch {
+      /* capture status check */
+    }
+  },
+
   initialize: async () => {
     // Restore current user if stored
     if (typeof window !== "undefined") {
@@ -215,6 +266,28 @@ export const useSentinelStore = create<SentinelStore>((set, get) => ({
       }
     }
 
+    // Set fallback initial statistics to prevent permanent skeleton loading
+    if (!get().statistics) {
+      set({
+        statistics: {
+          current_risk: 0,
+          network_status: "PROTECTED",
+          blocked_sources: [],
+          totals: {
+            critical_total: 0,
+            high_total: 0,
+            medium_total: 0,
+            low_total: 0,
+            mitigated_total: 0,
+            resolved_total: 0,
+            active_total: 0,
+          },
+          baseline_pkt_rate: 450,
+          traffic_window_s: 2,
+        },
+      });
+    }
+
     // parallel loads; each failure degrades gracefully
     const tasks = [
       sentinelApi
@@ -227,7 +300,7 @@ export const useSentinelStore = create<SentinelStore>((set, get) => ({
         .catch((e) =>
           set({
             modelInfoError:
-              e instanceof Error ? e.message : "Could not load model info",
+            e instanceof Error ? e.message : "Could not load model info",
           }),
         ),
       sentinelApi
@@ -240,6 +313,7 @@ export const useSentinelStore = create<SentinelStore>((set, get) => ({
         .catch(() => set({ pcapSamples: [] })),
       get().refreshEvents(),
       get().refreshStatistics(),
+      get().refreshCaptureStatus(),
     ];
     await Promise.allSettled(tasks);
   },
@@ -349,6 +423,10 @@ export const useSentinelStore = create<SentinelStore>((set, get) => ({
           ts: msg.ts,
         };
         set({ alerts: [...state.alerts, toast].slice(-MAX_TOASTS) });
+        break;
+      }
+      case "capture_status_change": {
+        void get().refreshCaptureStatus();
         break;
       }
       case "mitigation": {

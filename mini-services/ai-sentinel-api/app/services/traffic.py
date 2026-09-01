@@ -91,17 +91,26 @@ async def _loop() -> None:
     log.info("background traffic engine started (benign baseline)")
     while True:
         try:
-            source = rng.choice(CLIENTS)
-            target = rng.choice(SERVERS)
-            odd = ODD_WINDOW_CHANCE > 0 and rng.random() < ODD_WINDOW_CHANCE
-            raw = _odd_window(rng) if odd else _benign_window(rng)
+            from app.services import live_capture
+            live_result = live_capture.aggregate_and_analyze_window()
+            is_live = live_result is not None
 
-            result = pipeline.analyze_window(raw, source=source, target=target)
+            if is_live:
+                result = live_result
+                source = result.get("source", "local-interface")
+                odd = False
+            else:
+                source = rng.choice(CLIENTS)
+                target = rng.choice(SERVERS)
+                odd = ODD_WINDOW_CHANCE > 0 and rng.random() < ODD_WINDOW_CHANCE
+                raw = _odd_window(rng) if odd else _benign_window(rng)
+                result = pipeline.analyze_window(raw, source=source, target=target)
 
             msg = {
                 "type": "traffic_update",
                 "ts": _now(),
                 "source": source,
+                "capture_mode": "LIVE" if is_live else "SYNTHETIC_BASELINE",
                 "prediction": result["label"],
                 "confidence": result["confidence"],
                 "risk": result["risk"],
@@ -117,10 +126,10 @@ async def _loop() -> None:
             set_last_window(msg)
             await events.broadcast(msg)
 
-            # The occasional odd window may surface as a LOW anomaly event
-            if odd and result["label"] != "BENIGN":
+            # If live threat or odd anomaly detected, trigger alert
+            if (is_live or odd) and result["label"] != "BENIGN":
                 from app.services import alerting
-                await alerting.publish_threat(result, origin="background")
+                await alerting.publish_threat(result, origin="live_capture" if is_live else "background")
 
             await asyncio.sleep(TRAFFIC_INTERVAL_S)
         except asyncio.CancelledError:

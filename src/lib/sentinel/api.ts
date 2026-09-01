@@ -9,6 +9,8 @@
  * .env.local and every call (and the WebSocket) goes directly to uvicorn.
  */
 import type {
+  CaptureInterface,
+  CaptureStatus,
   HealthInfo,
   ModelInfo,
   PcapResult,
@@ -117,4 +119,12 @@ export const sentinelApi = {
       ok: boolean;
       cleared: { events: number; cancelled_simulations: number };
     }>("/api/reset"),
+  captureInterfaces: () =>
+    apiGet<{ interfaces: CaptureInterface[] }>("/api/capture/interfaces"),
+  captureStatus: () =>
+    apiGet<CaptureStatus>("/api/capture/status"),
+  startCapture: (iface?: string) =>
+    apiPost<CaptureStatus>("/api/capture/start", { interface: iface }),
+  stopCapture: () =>
+    apiPost<CaptureStatus>("/api/capture/stop"),
 };

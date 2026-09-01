@@ -381,3 +381,24 @@ export interface SimState {
   error?: string;
 }
 
+export interface CaptureInterface {
+  id: string;
+  name: string;
+  description: string;
+  ip: string;
+  mac: string;
+  is_loopback: boolean;
+  is_active: boolean;
+}
+
+export interface CaptureStatus {
+  status: "CAPTURE_AVAILABLE" | "CAPTURE_RUNNING" | "CAPTURE_STOPPED" | "CAPTURE_ERROR";
+  mode: "LIVE" | "SYNTHETIC_BASELINE";
+  interface: string | null;
+  packets_captured: number;
+  duration_s: number;
+  error: string | null;
+  pcap_provider: boolean;
+}
+
+

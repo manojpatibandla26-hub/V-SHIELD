@@ -269,3 +269,47 @@ async def reset_demo():
 @router.get("/statistics")
 async def statistics():
     return state.statistics()
+
+
+# ------------------------------------------------------------------ live capture
+class StartCaptureRequest(BaseModel):
+    interface: str | None = Field(default=None, description="Interface name/id to sniff on")
+
+
+@router.get("/capture/interfaces")
+async def capture_interfaces():
+    from app.services import live_capture
+    return {"interfaces": live_capture.get_interfaces()}
+
+
+@router.get("/capture/status")
+async def capture_status():
+    from app.services import live_capture
+    return live_capture.get_status()
+
+
+@router.post("/capture/start")
+async def start_live_capture(req: StartCaptureRequest | None = None):
+    from app.services import live_capture
+    iface = req.interface if req else None
+    res = live_capture.start_capture(iface=iface)
+    await events.broadcast({
+        "type": "capture_status_change",
+        "ts": time.time(),
+        "status": res.get("status"),
+        "interface": res.get("interface"),
+    })
+    return res
+
+
+@router.post("/capture/stop")
+async def stop_live_capture():
+    from app.services import live_capture
+    res = live_capture.stop_capture()
+    await events.broadcast({
+        "type": "capture_status_change",
+        "ts": time.time(),
+        "status": res.get("status"),
+    })
+    return res
+
