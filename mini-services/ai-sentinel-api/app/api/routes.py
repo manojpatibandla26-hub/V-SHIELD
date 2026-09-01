@@ -130,11 +130,19 @@ async def list_pcap_samples():
 
 @router.post("/pcap/upload")
 async def upload_pcap(file: UploadFile = File(...)):
+    if not model_registry.is_ready():
+        model_registry.ensure_model()
     suffix = Path(file.filename or "").suffix.lower()
-    tmp = Path(tempfile.mkstemp(suffix=suffix or ".pcap")[1])
+    if suffix not in (".pcap", ".pcapng", ".cap"):
+        suffix = ".pcap"
+    
+    import os
+    fd, path_str = tempfile.mkstemp(suffix=suffix)
+    os.close(fd)
+    tmp = Path(path_str)
     try:
+        total = 0
         with tmp.open("wb") as fh:
-            total = 0
             while chunk := await file.read(1024 * 1024):
                 total += len(chunk)
                 if total > pcap_parser.PCAP_MAX_BYTES:
@@ -142,22 +150,38 @@ async def upload_pcap(file: UploadFile = File(...)):
                         400, detail="File too large — limit is 25 MB.")
                 fh.write(chunk)
         return await pcap_parser.analyze_file(tmp, file.filename or "upload.pcap")
+    except HTTPException:
+        raise
     except pcap_parser.PcapError as exc:
         raise HTTPException(400, detail=str(exc))
+    except Exception as exc:
+        log.exception("PCAP upload parsing error")
+        raise HTTPException(400, detail=f"Failed to process capture file: {exc}")
     finally:
-        shutil.os.unlink(tmp)
+        try:
+            if tmp.exists():
+                tmp.unlink(missing_ok=True)
+        except Exception:
+            pass
 
 
 @router.post("/pcap/samples/{name}/analyze")
 async def analyze_sample(name: str):
+    if not model_registry.is_ready():
+        model_registry.ensure_model()
     path = pcap_samples.sample_path(name)
     if path is None:
         raise HTTPException(
             404, detail=f"Sample '{name}' not found. See /api/pcap/samples.")
     try:
         return await pcap_parser.analyze_file(path, path.name)
+    except HTTPException:
+        raise
     except pcap_parser.PcapError as exc:
         raise HTTPException(400, detail=str(exc))
+    except Exception as exc:
+        log.exception("PCAP sample parsing error")
+        raise HTTPException(400, detail=f"Failed to analyze sample: {exc}")
 
 
 # ------------------------------------------------------------------ events
