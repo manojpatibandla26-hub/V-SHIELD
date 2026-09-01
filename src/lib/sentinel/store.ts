@@ -363,19 +363,20 @@ export const useSentinelStore = create<SentinelStore>((set, get) => ({
     switch (msg.type) {
       case "traffic_update": {
         const point: TrafficPoint = {
-          t: msg.ts * 1000,
-          pktRate: msg.pkt_rate,
-          byteRate: msg.byte_rate,
-          flows: msg.flows,
-          risk: msg.risk,
-          severity: msg.severity,
-          prediction: msg.prediction,
-          synCount: msg.syn_count,
-          ackCount: msg.ack_count,
-          totalPackets: msg.total_packets,
+          t: typeof msg.ts === "number" ? msg.ts * 1000 : Date.now(),
+          pktRate: typeof msg.pkt_rate === "number" ? msg.pkt_rate : 0,
+          byteRate: typeof msg.byte_rate === "number" ? msg.byte_rate : 0,
+          flows: typeof msg.flows === "number" ? msg.flows : 0,
+          risk: typeof msg.risk === "number" ? msg.risk : 0,
+          severity: msg.severity ?? "LOW",
+          prediction: msg.prediction ?? "BENIGN",
+          synCount: typeof msg.syn_count === "number" ? msg.syn_count : 0,
+          ackCount: typeof msg.ack_count === "number" ? msg.ack_count : 0,
+          totalPackets: typeof msg.total_packets === "number" ? msg.total_packets : 0,
         };
+        const currentTraffic = Array.isArray(state.traffic) ? state.traffic : [];
         set({
-          traffic: [...state.traffic, point].slice(-MAX_TRAFFIC_POINTS),
+          traffic: [...currentTraffic, point].slice(-MAX_TRAFFIC_POINTS),
           livePrediction: msg.prediction === "BENIGN" ? null : msg,
         });
         break;

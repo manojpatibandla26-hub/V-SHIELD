@@ -37,7 +37,8 @@ export function TrafficChart({ data }: { data?: TrafficPoint[] }) {
   const [isPaused, setIsPaused] = useState(false);
   const [frozenData, setFrozenData] = useState<TrafficPoint[] | null>(null);
 
-  const activeData = isPaused && frozenData ? frozenData : (data ?? storeTraffic);
+  const rawTraffic = isPaused && frozenData ? frozenData : (data ?? storeTraffic);
+  const activeData = Array.isArray(rawTraffic) ? rawTraffic : [];
 
   const chartData = useMemo(() => {
     let sliceCount = 60;
@@ -54,7 +55,8 @@ export function TrafficChart({ data }: { data?: TrafficPoint[] }) {
 
   const togglePause = () => {
     if (!isPaused) {
-      setFrozenData([...data]);
+      const currentList = Array.isArray(data) ? data : Array.isArray(storeTraffic) ? storeTraffic : [];
+      setFrozenData([...currentList]);
       setIsPaused(true);
     } else {
       setIsPaused(false);

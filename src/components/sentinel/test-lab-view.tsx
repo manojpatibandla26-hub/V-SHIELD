@@ -136,7 +136,7 @@ function ScenarioCard({ type }: { type: string }) {
                 <Button
                   size="sm"
                   onClick={() => {
-                    const ev = events.find((e) => (e.sim_id === sim.sim_id || e.source === scenario.source) && e.status === "ACTIVE");
+                    const ev = events.find((e) => (e.sim_id === sim.sim_id || e.attack.toLowerCase() === type.toLowerCase()) && e.status === "ACTIVE");
                     if (ev) void mitigateEvent(ev.id);
                   }}
                   className="w-full mt-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md flex items-center justify-center gap-1.5 animate-pulse"

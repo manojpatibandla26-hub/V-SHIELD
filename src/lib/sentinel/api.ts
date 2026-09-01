@@ -20,7 +20,19 @@ import type {
   ThreatEvent,
 } from "./types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
+function getApiBase(): string {
+  if (process.env.NEXT_PUBLIC_API_BASE) {
+    return process.env.NEXT_PUBLIC_API_BASE.replace(/\/$/, "");
+  }
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1") {
+      return "http://localhost:8000";
+    }
+  }
+  return "";
+}
+
 const SERVICE_PORT = "8000";
 
 export class ApiError extends Error {
@@ -32,18 +44,21 @@ export class ApiError extends Error {
 }
 
 function apiUrl(path: string): string {
-  if (API_BASE) return `${API_BASE}${path}`;
+  const base = getApiBase();
+  if (base) return `${base}${path}`;
   const sep = path.includes("?") ? "&" : "?";
   return `${path}${sep}XTransformPort=${SERVICE_PORT}`;
 }
 
 export function wsUrl(): string {
-  if (API_BASE) return `${API_BASE.replace(/^http/, "ws")}/ws`;
+  const base = getApiBase();
+  if (base) return `${base.replace(/^http/, "ws")}/ws`;
   const proto =
     typeof window !== "undefined" && window.location.protocol === "https:"
       ? "wss"
       : "ws";
-  return `${proto}://${window.location.host}/ws?XTransformPort=${SERVICE_PORT}`;
+  const host = typeof window !== "undefined" ? window.location.host : "localhost:8000";
+  return `${proto}://${host}/ws?XTransformPort=${SERVICE_PORT}`;
 }
 
 async function parseError(res: Response): Promise<string> {
